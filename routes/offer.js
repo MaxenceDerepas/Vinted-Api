@@ -6,7 +6,7 @@ const isAuthenticated = require("../middlewares/isAuthenticated");
 const User = require("../models/User");
 const Offer = require("../models/Offers");
 
-router.get("/offers", isAuthenticated, async (req, res) => {
+router.get("/offers", async (req, res) => {
     try {
         let filters = {};
 
