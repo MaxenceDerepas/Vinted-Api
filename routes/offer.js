@@ -74,50 +74,66 @@ router.post("/offer/publish", isAuthenticated, async (req, res) => {
             title,
             description,
             price,
-            size,
             brand,
+            size,
             condition,
-            city,
             color,
+            city,
         } = req.fields;
 
-        const newOffer = new Offer({
-            product_name: title,
-            product_description: description,
-            product_price: price,
-            product_details: [
-                {
-                    MARQUE: brand,
-                },
-                {
-                    TAILLE: size,
-                },
-                {
-                    ÉTAT: condition,
-                },
-                {
-                    COULEUR: color,
-                },
-                {
-                    EMPLACEMENT: city,
-                },
-            ],
-            owner: req.user,
-        });
+        console.log(req.fields);
 
-        const result = await cloudinary.uploader.upload(
-            req.files.picture.path,
-            {
-                folder: `/vinted/offers/${newOffer._id}`,
-            }
-        );
+        if (title && price && req.files.picture.path) {
+            const newOffer = new Offer({
+                product_name: title,
+                product_description: description,
+                product_price: price,
+                product_details: [
+                    { MARQUE: brand },
+                    { TAILLE: size },
+                    { ÉTAT: condition },
+                    { COULEUR: color },
+                    { EMPLACEMENT: city },
+                ],
+                owner: req.user,
+            });
 
-        newOffer.product_image = result;
+            const result = await cloudinary.uploader.unsigned_upload(
+                req.files.picture.path,
+                "vinted_upload",
+                {
+                    folder: `api/vinted/offers/${newOffer._id}`,
+                    public_id: "preview",
+                    cloud_name: "vinted",
+                }
+            );
 
-        await newOffer.save();
-        res.status(200).json(newOffer);
+            newOffer.product_image = result;
+
+            await newOffer.save();
+
+            res.json(newOffer);
+        } else {
+            res.status(400).json({
+                message: "title, price and picture are required",
+            });
+        }
     } catch (error) {
-        res.status(400).json({ error: error.message });
+        console.log(error.message);
+        res.status(400).json({ message: error.message });
+    }
+});
+
+router.get("/offer/:id", async (req, res) => {
+    try {
+        const offer = await Offer.findById(req.params.id).populate({
+            path: "owner",
+            select: "account.username account.phone account.avatar",
+        });
+        res.json(offer);
+    } catch (error) {
+        console.log(error.message);
+        res.status(400).json({ message: error.message });
     }
 });
 
