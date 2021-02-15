@@ -16,16 +16,16 @@ router.get("/offers", async (req, res) => {
 
         if (req.query.priceMin) {
             filters.product_price = {
-                $gte: Number(req.query.priceMin),
+                $gte: req.query.priceMin,
             };
         }
 
         if (req.query.priceMax) {
             if (filters.product_price) {
-                filters.product_price.$lte = Number(req.query.priceMax);
+                filters.product_price.$lte = req.query.priceMax;
             } else {
                 filters.product_price = {
-                    $lte: Number(req.query.priceMax),
+                    $lte: req.query.priceMax,
                 };
             }
         }
@@ -33,14 +33,13 @@ router.get("/offers", async (req, res) => {
         let sort = {};
 
         if (req.query.sort === "price-desc") {
-            sort.product_price = -1;
-        }
-        if (req.query.sort === "price-asc") {
-            sort.product_price = 1;
+            sort = { product_price: -1 };
+        } else if (req.query.sort === "price-asc") {
+            sort = { product_price: 1 };
         }
 
         let page;
-        if (req.query.page < 1) {
+        if (Number(req.query.page) < 1) {
             page = 1;
         } else {
             page = Number(req.query.page);
@@ -48,19 +47,24 @@ router.get("/offers", async (req, res) => {
 
         let limit = Number(req.query.limit);
 
-        const count = await Offer.countDocuments(filters);
-
         const offers = await Offer.find(filters)
+            .populate({
+                path: "owner",
+                select: "account",
+            })
             .sort(sort)
             .skip((page - 1) * limit)
-            .limit(limit)
-            .select("product_name product_price");
-        res.status(200).json({
+            .limit(limit);
+
+        const count = await Offer.countDocuments(filters);
+
+        res.json({
             count: count,
             offers: offers,
         });
     } catch (error) {
-        res.status(400).json({ error: error.message });
+        console.log(error.message);
+        res.status(400).json({ message: error.message });
     }
 });
 
